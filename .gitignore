@@ -1,0 +1,17 @@
+/bin/
+/obj/
+*.dll
+*.exe
+*.log
+.vscode/
+*.user
+*.suo
+*.db
+*.sqlite
+my_bookshelf.db
+.DS_Store
+Thumbs.db
+logs/
+*.log
+node_modules/
+dist/
