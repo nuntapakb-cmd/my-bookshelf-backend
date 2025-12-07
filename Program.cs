@@ -22,6 +22,11 @@ builder.Services.AddScoped<TokenService>();
 // CORS - allow Angular dev + Netlify
 builder.Services.AddCors(options =>
 {
+
+    // Remember to add frontend URL here when deploying
+    // WithOrigins("http://localhost:4200", "http://YOUR-IP:4200", ...)
+
+
     options.AddPolicy("AllowLocal", policy =>
     {
         policy.WithOrigins(
