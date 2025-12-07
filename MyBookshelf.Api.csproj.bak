@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
@@ -15,7 +15,7 @@
     <!-- OpenAPI/Swagger for ASP.NET Core (.NET 8) -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.4" />
 
-    <!-- EF Core  -->
+    <!-- EF Core (support .NET 8) -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -26,7 +26,7 @@
     <!-- Swashbuckle (Swagger) -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
 
-    <!-- Microsoft.OpenApi (support .NET 8) -->
+    <!-- Microsoft.OpenApi (.NET 8) -->
     <PackageReference Include="Microsoft.OpenApi" Version="1.6.16" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
   </ItemGroup>

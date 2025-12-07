@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using MyBookshelf.Api.Data;
 using MyBookshelf.Api.DTOs;
 using MyBookshelf.Api.Models;
+using Microsoft.Extensions.Logging;
 
 namespace MyBookshelf.Api.Controllers
 {
@@ -16,13 +17,18 @@ namespace MyBookshelf.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(AppDbContext db, IConfiguration config)
+        public AuthController(AppDbContext db, IConfiguration config, ILogger<AuthController> logger)
         {
             _db = db;
             _config = config;
+            _logger = logger;
         }
 
+        // ----------------------------
+        // REGISTER
+        // ----------------------------
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserRegisterDto dto)
         {
@@ -32,35 +38,79 @@ namespace MyBookshelf.Api.Controllers
             if (await _db.Users.AnyAsync(u => u.Username == dto.Username))
                 return BadRequest(new { message = "Username already exists." });
 
-            var hashed = BCrypt.Net.BCrypt.HashPassword(dto.Password);
-            var user = new MyBookshelf.Api.Models.User { Username = dto.Username, PasswordHash = hashed };
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
+            var hashedPwd = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            var user = new User { Username = dto.Username, PasswordHash = hashedPwd };
 
-            return Ok(new { message = "Registered" });
+            _db.Users.Add(user);
+
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Register error for username {Username}", dto.Username);
+                return BadRequest(new { message = "Could not create user. Username may already exist." });
+            }
+
+            return Ok(new { message = "Registered successfully" });
         }
 
+        // ----------------------------
+        // LOGIN
+        // ----------------------------
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] UserLoginDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
                 return BadRequest(new { message = "Username and password are required." });
 
-            var user = await _db.Users.SingleOrDefaultAsync(u => u.Username == dto.Username);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                return Unauthorized(new { message = "Invalid credentials" });
+            try
+            {
+                // FirstOrDefaultAsync = ปลอดภัยกว่า SingleOrDefaultAsync
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == dto.Username);
 
-            var token = GenerateJwtToken(user);
-            return Ok(new { token, username = user.Username });
+                if (user == null)
+                    return Unauthorized(new { message = "Invalid username or password" });
+
+                if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+                    return Unauthorized(new { message = "Invalid username or password" });
+
+                var token = GenerateJwtToken(user);
+
+                return Ok(new { token, username = user.Username });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Login error for username {Username}", dto?.Username);
+                return StatusCode(500, new
+                {
+                    message = "Server error during login",
+                    error = ex.Message
+                });
+            }
         }
 
-        private string GenerateJwtToken(MyBookshelf.Api.Models.User user)
+        // ----------------------------
+        // GENERATE JWT TOKEN
+        // ----------------------------
+        private string GenerateJwtToken(User user)
         {
             var jwtSection = _config.GetSection("Jwt");
-            var keyString = jwtSection["Key"] ?? throw new Exception("JWT key not set in configuration");
-            var key = Encoding.ASCII.GetBytes(keyString);
 
-            var tokenHandler = new JwtSecurityTokenHandler();
+            var keyString = jwtSection["Key"];
+            if (string.IsNullOrWhiteSpace(keyString))
+                throw new Exception("JWT Key is not configured (Jwt:Key).");
+
+            if (!double.TryParse(jwtSection["DurationMinutes"], out var durationMinutes))
+                durationMinutes = 60;
+
+            var issuer = jwtSection["Issuer"];
+            var audience = jwtSection["Audience"];
+
+            var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(keyString));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature);
+
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -70,13 +120,15 @@ namespace MyBookshelf.Api.Controllers
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(double.Parse(jwtSection["DurationMinutes"] ?? "60")),
-                Issuer = jwtSection["Issuer"],
-                Audience = jwtSection["Audience"],
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                Expires = DateTime.UtcNow.AddMinutes(durationMinutes),
+                Issuer = issuer,
+                Audience = audience,
+                SigningCredentials = creds
             };
 
+            var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(tokenDescriptor);
+
             return tokenHandler.WriteToken(token);
         }
     }

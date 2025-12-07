@@ -1,3 +1,4 @@
+// MyBookshelf.Api/Controllers/CitatController.cs
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,9 +31,20 @@ namespace MyBookshelf.Api.Controllers
             var citats = await _db.Citats
                                   .AsNoTracking()
                                   .Where(c => c.UserId == userId)
+                                  .Include(c => c.Book)
                                   .OrderByDescending(c => c.CreatedAt)
                                   .ToListAsync();
-            return Ok(citats);
+
+            var dtos = citats.Select(c => new CitatDto {
+                Id = c.Id,
+                Text = c.Text,
+                Author = !string.IsNullOrWhiteSpace(c.Author) ? c.Author : c.Book?.Author,
+                BookId = c.BookId,
+                BookTitle = c.Book?.Title,
+                CreatedAt = c.CreatedAt
+            });
+
+            return Ok(dtos);
         }
 
         // GET: api/Citat/top5
@@ -43,10 +55,46 @@ namespace MyBookshelf.Api.Controllers
             var citats = await _db.Citats
                                   .AsNoTracking()
                                   .Where(c => c.UserId == userId)
+                                  .Include(c => c.Book)
                                   .OrderByDescending(c => c.CreatedAt)
                                   .Take(5)
                                   .ToListAsync();
-            return Ok(citats);
+
+            var dtos = citats.Select(c => new CitatDto {
+                Id = c.Id,
+                Text = c.Text,
+                Author = !string.IsNullOrWhiteSpace(c.Author) ? c.Author : c.Book?.Author,
+                BookId = c.BookId,
+                BookTitle = c.Book?.Title,
+                CreatedAt = c.CreatedAt
+            });
+
+            return Ok(dtos);
+        }
+
+        // GET: api/Citat/{id}
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetCitatById(int id)
+        {
+            var userId = GetUserId();
+
+            var citat = await _db.Citats
+                         .AsNoTracking()
+                         .Include(c => c.Book)
+                         .SingleOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+
+            if (citat == null) return NotFound();
+
+            var dto = new CitatDto {
+                Id = citat.Id,
+                Text = citat.Text,
+                Author = !string.IsNullOrWhiteSpace(citat.Author) ? citat.Author : citat.Book?.Author,
+                BookId = citat.BookId,
+                BookTitle = citat.Book?.Title,
+                CreatedAt = citat.CreatedAt
+            };
+
+            return Ok(dto);
         }
 
         // POST: api/Citat
@@ -54,16 +102,34 @@ namespace MyBookshelf.Api.Controllers
         public async Task<IActionResult> CreateCitat([FromBody] CitatDto dto)
         {
             var userId = GetUserId();
+
             var citat = new Citat
             {
                 Text = dto.Text,
+                Author = string.IsNullOrWhiteSpace(dto.Author) ? null : dto.Author,
+                BookId = dto.BookId,
                 CreatedAt = DateTime.UtcNow,
                 UserId = userId
             };
+
             _db.Citats.Add(citat);
             await _db.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetMyCitats), new { id = citat.Id }, citat);
+
+            // load book for returning friendly DTO
+            var book = citat.BookId.HasValue ? await _db.Books.AsNoTracking().SingleOrDefaultAsync(b => b.Id == citat.BookId.Value) : null;
+
+            var result = new CitatDto {
+                Id = citat.Id,
+                Text = citat.Text,
+                Author = citat.Author ?? book?.Author,
+                BookId = citat.BookId,
+                BookTitle = book?.Title,
+                CreatedAt = citat.CreatedAt
+            };
+
+            return CreatedAtAction(nameof(GetMyCitats), new { id = citat.Id }, result);
         }
+
 
         // PUT: api/Citat/{id}
         [HttpPut("{id:int}")]
@@ -74,6 +140,9 @@ namespace MyBookshelf.Api.Controllers
             if (citat == null) return NotFound();
 
             citat.Text = dto.Text;
+            citat.Author = string.IsNullOrWhiteSpace(dto.Author) ? null : dto.Author;
+            citat.BookId = dto.BookId;
+
             await _db.SaveChangesAsync();
             return NoContent();
         }

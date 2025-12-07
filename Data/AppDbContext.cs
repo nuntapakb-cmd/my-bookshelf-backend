@@ -10,5 +10,7 @@ namespace MyBookshelf.Api.Data
         public DbSet<User> Users { get; set; } = null!;
         public DbSet<Book> Books { get; set; } = null!;
         public DbSet<Citat> Citats { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
     }
 }
