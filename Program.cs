@@ -19,18 +19,19 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(conn));
 // register TokenService
 builder.Services.AddScoped<TokenService>();
 
-// CORS - allow local Angular dev at :4200
+// CORS - allow Angular dev + Netlify
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocal", policy =>
     {
         policy.WithOrigins(
-                    "http://localhost:4200",
-                    "https://mybookshelf-client.netlify.app"
-                )
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+                "http://localhost:4200",
+                "http://192.168.10.153:4200",       
+                "https://mybookshelf-client.netlify.app"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -43,7 +44,6 @@ builder.Services.AddAuthentication(options =>
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-
 .AddJwtBearer(options =>
 {
     options.RequireHttpsMetadata = false;
@@ -53,7 +53,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateIssuerSigningKey = true,
-        ValidateLifetime = true, // Check token time
+        ValidateLifetime = true,
         ValidIssuer = jwtSection["Issuer"],
         ValidAudience = jwtSection["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(key),
@@ -72,23 +72,23 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyBookshelf.Api v1");
 });
 
-
 app.UseHttpsRedirection();
 
 app.UseCors("AllowLocal");
 
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();
 
 app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 
-// >>> auto-migrate database on startup
-using(var scope = app.Services.CreateScope())
+// auto-migrate database on startup
+using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate(); 
+    db.Database.Migrate();
 }
 
 app.Run();
