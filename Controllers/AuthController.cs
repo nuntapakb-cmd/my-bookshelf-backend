@@ -8,6 +8,7 @@ using MyBookshelf.Api.Data;
 using MyBookshelf.Api.DTOs;
 using MyBookshelf.Api.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MyBookshelf.Api.Controllers
 {
