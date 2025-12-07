@@ -25,7 +25,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowLocal", policy =>
     {
         policy.WithOrigins(
-                    "http://localhost:4200"
+                    "http://localhost:4200",
                     "https://mybookshelf-client.netlify.app"
                 )
               .AllowAnyHeader()
@@ -65,7 +65,7 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Swagger (เปิดทั้ง dev + production)
+// Swagger
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
