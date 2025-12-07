@@ -30,6 +30,7 @@ namespace MyBookshelf.Api.Controllers
         // REGISTER
         // ----------------------------
         [HttpPost("register")]
+         [AllowAnonymous]  
         public async Task<IActionResult> Register([FromBody] UserRegisterDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
@@ -60,6 +61,7 @@ namespace MyBookshelf.Api.Controllers
         // LOGIN
         // ----------------------------
         [HttpPost("login")]
+        [AllowAnonymous] 
         public async Task<IActionResult> Login([FromBody] UserLoginDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
