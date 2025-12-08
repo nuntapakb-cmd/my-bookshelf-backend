@@ -33,6 +33,7 @@ builder.Services.AddCors(options =>
                 "http://localhost:4200",
                 "http://192.168.10.153:4200",       
                 "https://mybookshelf-client.netlify.app"
+                "https://mybookshelf-front.netlify.app"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
