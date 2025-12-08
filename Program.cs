@@ -32,7 +32,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "http://localhost:4200",
                 "http://192.168.10.153:4200",       
-                "https://mybookshelf-client.netlify.app"
+                "https://mybookshelf-client.netlify.app",
                 "https://mybookshelf-front.netlify.app"
             )
             .AllowAnyHeader()
